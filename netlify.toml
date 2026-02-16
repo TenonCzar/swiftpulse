@@ -1,0 +1,5 @@
+[build]
+  # If you have a build step (e.g. for Vite/React), put it here
+  # command = "npm run build"     # optional
+  publish = "."                    # or "dist" / "build" if you have one
+  functions = "netlify/functions"  # ← points to your functions folder

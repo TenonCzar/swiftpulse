@@ -1756,7 +1756,7 @@ ul {
   display: none;
 }
 
-img[src="assets/img/logo-2.png"]{
+img[src="assets/img/logo-2.png"],img[src="../assets/img/logo-2.png"], img[src="../../assets/img/logo-2.png"]{
   filter: invert(1);
 }
 .navbar-area-2 .nav-container {

@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogiTrack • Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+
+        .tail-container {
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .sidebar-link {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-link:hover {
+            transform: translateX(8px);
+        }
+
+        .parcel-card {
+            transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .parcel-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        .status-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .4;
+            }
+        }
+
+        .tracking-code {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 4px;
+        }
+    </style>
+</head>
+
+<body class="bg-zinc-950 text-zinc-200">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-zinc-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-truck text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-2xl font-bold tracking-tighter">LogiTrack</span>
+                        <span class="text-emerald-400 text-xs font-medium block -mt-1">ADMIN</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="flex-1 p-4">
+                <nav class="space-y-1">
+                    <a href="#" onclick="switchView('dashboard')"
+                        class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl hover:bg-zinc-800 text-zinc-400 hover:text-white active-view"
+                        id="nav-dashboard">
+                        <i class="fa-solid fa-gauge-high w-5"></i>
+                        Dashboard
+                    </a>
+                    <a href="#" onclick="switchView('add-parcel')"
+                        class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                        id="nav-add-parcel">
+                        <i class="fa-solid fa-plus w-5"></i>
+                        New Shipment
+                    </a>
+                    <a href="#" onclick="switchView('parcels')"
+                        class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                        id="nav-parcels">
+                        <i class="fa-solid fa-boxes-packing w-5"></i>
+                        All Shipments
+                        <span id="parcel-count"
+                            class="ml-auto bg-zinc-800 text-zinc-400 text-xs px-2.5 py-0.5 rounded-full font-mono">0</span>
+                    </a>
+                    <a href="#" onclick="switchView('analytics')"
+                        class="sidebar-link flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl hover:bg-zinc-800 text-zinc-400 hover:text-white">
+                        <i class="fa-solid fa-chart-line w-5"></i>
+                        Analytics
+                    </a>
+                </nav>
+
+                <!-- Quick Stats -->
+                <div class="mt-10 px-4">
+                    <div class="text-xs font-medium text-zinc-500 mb-3 tracking-widest">QUICK STATS</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-zinc-800 rounded-3xl p-4">
+                            <div class="text-emerald-400 text-2xl font-semibold" id="stat-in-transit">12</div>
+                            <div class="text-xs text-zinc-400">In Transit</div>
+                        </div>
+                        <div class="bg-zinc-800 rounded-3xl p-4">
+                            <div class="text-amber-400 text-2xl font-semibold" id="stat-pending">7</div>
+                            <div class="text-xs text-zinc-400">Pending</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-zinc-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-zinc-700 rounded-2xl flex items-center justify-center text-sm font-semibold">
+                        SA</div>
+                    <div>
+                        <div class="text-sm font-medium">Sam Altman</div>
+                        <div class="text-xs text-zinc-500">Super Admin</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col">
+            <!-- Top Bar -->
+            <div class="h-16 border-b border-zinc-800 bg-zinc-900 px-8 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div onclick="toggleSidebar()" class="lg:hidden text-zinc-400 hover:text-white cursor-pointer">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </div>
+                    <div class="relative w-80">
+                        <input id="search-input" onkeyup="filterParcels()" type="text" placeholder="Search shipments..."
+                            class="w-full bg-zinc-800 border border-zinc-700 rounded-3xl py-3 px-5 pl-12 text-sm focus:outline-none focus:border-emerald-500">
+                        <i class="fa-solid fa-magnifying-glass absolute left-5 top-3.5 text-zinc-500"></i>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-6">
+                    <!-- Notifications -->
+                    <div class="relative cursor-pointer" onclick="showNotifications()">
+                        <i class="fa-solid fa-bell text-xl text-zinc-400 hover:text-white"></i>
+                        <div
+                            class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold">
+                            3</div>
+                    </div>
+
+                    <!-- User -->
+                    <div class="flex items-center gap-3 cursor-pointer">
+                        <div class="text-right">
+                            <div class="text-sm font-medium">Alex Rivera</div>
+                            <div class="text-xs text-emerald-400">Online</div>
+                        </div>
+                        <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl overflow-hidden">
+                            <img src="https://picsum.photos/id/64/200/200" alt="Admin"
+                                class="w-full h-full object-cover">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-auto p-8" id="content-area">
+
+                <!-- DASHBOARD VIEW -->
+                <div id="view-dashboard" class="space-y-8">
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <div class="text-4xl font-semibold tracking-tighter">Good afternoon, Alex 👋</div>
+                            <div class="text-zinc-400">Here's what's happening with your shipments today.</div>
+                        </div>
+                        <button onclick="switchView('add-parcel')"
+                            class="bg-white text-zinc-900 px-8 py-3 rounded-3xl font-semibold flex items-center gap-2 hover:bg-zinc-100 transition">
+                            <i class="fa-solid fa-plus"></i>
+                            New Shipment
+                        </button>
+                    </div>
+
+                    <!-- KPI Cards -->
+                    <div class="grid grid-cols-4 gap-6">
+                        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+                            <div class="flex justify-between">
+                                <div>
+                                    <div class="text-emerald-400 text-sm font-medium">TOTAL SHIPMENTS</div>
+                                    <div id="kpi-total" class="text-5xl font-bold mt-2">248</div>
+                                </div>
+                                <div class="text-emerald-400">
+                                    <i class="fa-solid fa-boxes-stacked text-4xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-xs text-emerald-400 flex items-center gap-1">
+                                <span class="inline-block w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                                +14 this week
+                            </div>
+                        </div>
+
+                        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+                            <div class="flex justify-between">
+                                <div>
+                                    <div class="text-amber-400 text-sm font-medium">IN TRANSIT</div>
+                                    <div id="kpi-transit" class="text-5xl font-bold mt-2">87</div>
+                                </div>
+                                <div class="text-amber-400">
+                                    <i class="fa-solid fa-truck text-4xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-xs text-amber-400">42% of total</div>
+                        </div>
+
+                        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6">
+                            <div class="flex justify-between">
+                                <div>
+                                    <div class="text-blue-400 text-sm font-medium">DELIVERED</div>
+                                    <div id="kpi-delivered" class="text-5xl font-bold mt-2">136</div>
+                                </div>
+                                <div class="text-blue-400">
+                                    <i class="fa-solid fa-check-circle text-4xl"></i>
+                                </div>
+                            </div>
+                            <div class="mt-4 text-xs text-blue-400">55% success rate</div>
+                        </div>
+
+                        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 relative overflow-hidden">
+                            <div class="flex justify-between">
+                                <div>
+                                    <div class="text-purple-400 text-sm font-medium">AVG DELIVERY</div>
+                                    <div id="kpi-avg" class="text-5xl font-bold mt-2">2.4</div>
+                                    <div class="text-xs text-zinc-400">days</div>
+                                </div>
+                                <div class="text-purple-400">
+                                    <i class="fa-solid fa-clock text-4xl"></i>
+                                </div>
+                            </div>
+                            <div class="absolute bottom-4 right-4 text-[10px] bg-zinc-800 px-3 py-1 rounded-2xl">↓ 18%
+                                from last month</div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-lg font-semibold">Recent Shipments</div>
+                            <button onclick="switchView('parcels')"
+                                class="text-emerald-400 text-sm font-medium flex items-center gap-1 hover:underline">
+                                View all <i class="fa-solid fa-arrow-right"></i>
+                            </button>
+                        </div>
+                        <div id="recent-shipments" class="grid grid-cols-3 gap-6">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADD PARCEL VIEW -->
+                <div id="view-add-parcel" class="max-w-2xl mx-auto hidden">
+                    <div class="bg-zinc-900 rounded-3xl p-10">
+                        <div class="text-center mb-10">
+                            <div class="inline-flex items-center gap-2 bg-zinc-800 rounded-3xl px-6 py-2 text-sm">
+                                <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                                CREATE NEW SHIPMENT
+                            </div>
+                        </div>
+
+                        <form id="parcel-form" onsubmit="addParcel(event)" class="space-y-8">
+                            <!-- Sender -->
+                            <div>
+                                <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">SENDER</div>
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-400 mb-1">Full Name</label>
+                                        <input id="sender-name" type="text" required
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                            placeholder="John Doe">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-400 mb-1">Phone</label>
+                                        <input id="sender-phone" type="tel" required
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                            placeholder="+234 803 123 4567">
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label class="block text-xs font-medium text-zinc-400 mb-1">Address</label>
+                                    <textarea id="sender-address" required rows="2"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm resize-none"
+                                        placeholder="12 Adeola Odeku Street, Victoria Island, Lagos"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Recipient -->
+                            <div>
+                                <div class="text-xs uppercase tracking-widest text-zinc-500 mb-2">RECIPIENT</div>
+                                <div class="grid grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-400 mb-1">Full Name</label>
+                                        <input id="recipient-name" type="text" required
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                            placeholder="Jane Smith">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-400 mb-1">Phone</label>
+                                        <input id="recipient-phone" type="tel" required
+                                            class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                            placeholder="+234 706 987 6543">
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label class="block text-xs font-medium text-zinc-400 mb-1">Address</label>
+                                    <textarea id="recipient-address" required rows="2"
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm resize-none"
+                                        placeholder="45 Banana Island Road, Ikoyi, Lagos"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Parcel Details -->
+                            <div class="grid grid-cols-3 gap-6">
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-400 mb-1">Description</label>
+                                    <input id="description" type="text" required
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                        placeholder="iPhone 15 Pro">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-400 mb-1">Weight (kg)</label>
+                                    <input id="weight" type="number" step="0.1" required
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                        placeholder="0.8">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-400 mb-1">Value (₦)</label>
+                                    <input id="value" type="number" required
+                                        class="w-full bg-zinc-800 border border-zinc-700 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm"
+                                        placeholder="450000">
+                                </div>
+                            </div>
+
+                            <!-- Shipping Options -->
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 mb-2">Shipping Method</label>
+                                <div class="grid grid-cols-3 gap-3" id="shipping-options">
+                                    <!-- JS populated -->
+                                </div>
+                            </div>
+
+                            <!-- Generate & Submit -->
+                            <div class="pt-6 border-t border-zinc-800 flex items-center gap-4">
+                                <button type="button" onclick="generateTrackingCode()"
+                                    class="flex-1 border border-dashed border-zinc-700 hover:border-emerald-500 text-emerald-400 py-4 rounded-3xl font-medium flex items-center justify-center gap-3 transition">
+                                    <i class="fa-solid fa-barcode"></i>
+                                    GENERATE TRACKING CODE
+                                </button>
+
+                                <button type="submit"
+                                    class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-zinc-900 py-4 rounded-3xl font-semibold transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    CREATE SHIPMENT
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Generated Code Display -->
+                        <div id="generated-code-container" class="hidden mt-8">
+                            <div class="bg-zinc-950 border border-emerald-500/30 rounded-3xl p-6">
+                                <div class="text-xs text-emerald-400 font-medium flex items-center gap-2 mb-2">
+                                    <i class="fa-solid fa-check"></i>
+                                    TRACKING CODE GENERATED
+                                </div>
+                                <div id="tracking-code-display"
+                                    class="tracking-code text-5xl font-bold text-emerald-400 text-center py-4 bg-black rounded-2xl">
+                                </div>
+                                <div class="flex justify-center mt-4">
+                                    <button onclick="copyTrackingCode()"
+                                        class="text-xs flex items-center gap-2 text-zinc-400 hover:text-white">
+                                        <i class="fa-solid fa-copy"></i>
+                                        COPY TO CLIPBOARD
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ALL PARCELS VIEW -->
+                <div id="view-parcels" class="hidden">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="text-3xl font-semibold">All Shipments</div>
+                        <div class="flex items-center gap-3">
+                            <select id="status-filter" onchange="filterParcels()"
+                                class="bg-zinc-900 border border-zinc-700 rounded-3xl px-6 py-3 text-sm focus:outline-none">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="transit">In Transit</option>
+                                <option value="delivered">Delivered</option>
+                            </select>
+                            <button onclick="exportParcels()"
+                                class="bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-3xl text-sm font-medium flex items-center gap-2">
+                                <i class="fa-solid fa-download"></i>
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="bg-zinc-900 rounded-3xl overflow-hidden">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-zinc-800">
+                                    <th class="text-left py-5 px-8 text-xs font-medium text-zinc-500">TRACKING</th>
+                                    <th class="text-left py-5 px-8 text-xs font-medium text-zinc-500">SENDER</th>
+                                    <th class="text-left py-5 px-8 text-xs font-medium text-zinc-500">RECIPIENT</th>
+                                    <th class="text-left py-5 px-8 text-xs font-medium text-zinc-500">STATUS</th>
+                                    <th class="text-left py-5 px-8 text-xs font-medium text-zinc-500">DATE</th>
+                                    <th class="text-right py-5 px-8 text-xs font-medium text-zinc-500">ACTIONS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="parcels-table-body" class="text-sm">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ANALYTICS VIEW (Placeholder) -->
+                <div id="view-analytics" class="hidden">
+                    <div class="text-center py-20 text-zinc-500">
+                        <i class="fa-solid fa-chart-pie text-8xl mb-6 opacity-20"></i>
+                        <div class="text-2xl font-medium">Analytics Dashboard</div>
+                        <div class="text-sm mt-2">Coming soon. Real-time insights, heatmaps, and more.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Bar -->
+            <div class="h-14 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 text-xs text-zinc-500">
+                <div>© 2026 LogiTrack Nigeria • All rights reserved</div>
+                <div class="ml-auto flex gap-8">
+                    <a href="#" class="hover:text-white">Help Center</a>
+                    <a href="#" class="hover:text-white">API Docs</a>
+                    <a href="#" class="hover:text-white">Logout</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracking Modal -->
+    <div id="tracking-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div class="bg-zinc-900 w-full max-w-lg mx-4 rounded-3xl overflow-hidden">
+            <!-- Modal Header -->
+            <div class="px-8 py-6 border-b border-zinc-800 flex items-center justify-between">
+                <div>
+                    <div class="text-sm text-zinc-400">Tracking Details</div>
+                    <div id="modal-tracking-code" class="text-2xl font-bold tracking-code text-emerald-400"></div>
+                </div>
+                <button onclick="closeModal()"
+                    class="w-8 h-8 flex items-center justify-center text-2xl text-zinc-400 hover:text-white">×</button>
+            </div>
+
+            <!-- Parcel Info -->
+            <div class="p-8 border-b border-zinc-800">
+                <div class="flex gap-8">
+                    <div class="flex-1">
+                        <div class="text-xs text-zinc-400">FROM</div>
+                        <div id="modal-sender" class="font-medium"></div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs text-zinc-400">TO</div>
+                        <div id="modal-recipient" class="font-medium"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="p-8">
+                <div class="text-xs font-medium text-zinc-400 mb-4">MOVEMENT HISTORY</div>
+                <div id="timeline" class="space-y-8">
+                    <!-- JS populated -->
+                </div>
+            </div>
+
+            <div class="p-8 border-t border-zinc-800 flex justify-end">
+                <button onclick="closeModal()"
+                    class="px-10 py-3 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 rounded-3xl">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script init
+        function initTailwind() {
+            // Already included via CDN
+        }
+
+        // Data Storage
+        let parcels = [];
+
+        // Sample Data
+        function loadSampleData() {
+            parcels = [
+                {
+                    id: 1,
+                    trackingCode: "XJPLQWRSTUVN",
+                    senderName: "Chinedu Okoro",
+                    senderAddress: "23 Lekki Phase 1, Lagos",
+                    senderPhone: "+234 901 234 5678",
+                    recipientName: "Aisha Mohammed",
+                    recipientAddress: "15 Kano Crescent, Abuja",
+                    recipientPhone: "+234 803 456 7890",
+                    description: "MacBook Air M3",
+                    weight: 1.2,
+                    value: 1250000,
+                    shippingMethod: "express",
+                    status: "transit",
+                    date: "2026-02-14",
+                    history: [
+                        { time: "Feb 14, 09:15", status: "Received at warehouse", location: "Lagos Hub" },
+                        { time: "Feb 15, 11:30", status: "In transit to Abuja", location: "En Route" },
+                        { time: "Feb 16, 07:45", status: "Arrived at sorting center", location: "Abuja Depot" }
+                    ]
+                },
+                {
+                    id: 2,
+                    trackingCode: "ABCD1234EFGH",
+                    senderName: "Fatima Yusuf",
+                    senderAddress: "8 Victoria Garden City, Lagos",
+                    senderPhone: "+234 706 123 4567",
+                    recipientName: "Emeka Nwosu",
+                    recipientAddress: "45 Port Harcourt Road, Rivers",
+                    recipientPhone: "+234 809 876 5432",
+                    description: "Wedding gown",
+                    weight: 3.5,
+                    value: 850000,
+                    shippingMethod: "standard",
+                    status: "delivered",
+                    date: "2026-02-12",
+                    history: [
+                        { time: "Feb 12, 14:20", status: "Received at warehouse", location: "Lagos Hub" },
+                        { time: "Feb 13, 08:00", status: "Delivered to customer", location: "Port Harcourt" }
+                    ]
+                },
+                {
+                    id: 3,
+                    trackingCode: "MNOPQRSTUVWX",
+                    senderName: "Olumide Adebayo",
+                    senderAddress: "12 Ikeja GRA, Lagos",
+                    senderPhone: "+234 802 345 6789",
+                    recipientName: "Zainab Ibrahim",
+                    recipientAddress: "7 Wuse District, Abuja",
+                    recipientPhone: "+234 704 567 8901",
+                    description: "Samsung Galaxy Z Fold6",
+                    weight: 0.4,
+                    value: 950000,
+                    shippingMethod: "express",
+                    status: "pending",
+                    date: "2026-02-16",
+                    history: [
+                        { time: "Feb 16, 10:00", status: "Received at warehouse", location: "Lagos Hub" }
+                    ]
+                }
+            ];
+            saveToLocalStorage();
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('logitrack_parcels', JSON.stringify(parcels));
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('logitrack_parcels');
+            if (saved) {
+                parcels = JSON.parse(saved);
+            } else {
+                loadSampleData();
+            }
+        }
+
+        // Generate 12-letter tracking code (A-Z only)
+        function generateRandomTrackingCode() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let code = '';
+            for (let i = 0; i < 12; i++) {
+                code += letters.charAt(Math.floor(Math.random() * 26));
+            }
+            return code;
+        }
+
+        // Current generated code
+        let currentTrackingCode = '';
+
+        function generateTrackingCode() {
+            currentTrackingCode = generateRandomTrackingCode();
+            document.getElementById('tracking-code-display').textContent = currentTrackingCode;
+            document.getElementById('generated-code-container').classList.remove('hidden');
+        }
+
+        function copyTrackingCode() {
+            if (!currentTrackingCode) return;
+            navigator.clipboard.writeText(currentTrackingCode).then(() => {
+                const btn = document.querySelector('#generated-code-container button');
+                const original = btn.innerHTML;
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> COPIED!`;
+                setTimeout(() => {
+                    btn.innerHTML = original;
+                }, 2000);
+            });
+        }
+
+        // Add new parcel
+        async function addParcel(e) {
+                e.preventDefault();
+
+                if (!currentTrackingCode) {
+                    alert("Please generate a tracking code first!");  // optional – can remove if server generates it
+                    return;
+                }
+
+                const formData = {
+                    senderName: document.getElementById('sender-name').value.trim(),
+                    senderPhone: document.getElementById('sender-phone').value.trim(),
+                    senderAddress: document.getElementById('sender-address').value.trim(),
+                    recipientName: document.getElementById('recipient-name').value.trim(),
+                    recipientPhone: document.getElementById('recipient-phone').value.trim(),
+                    recipientAddress: document.getElementById('recipient-address').value.trim(),
+                    description: document.getElementById('description').value.trim(),
+                    weight: parseFloat(document.getElementById('weight').value) || 0,
+                    value: parseFloat(document.getElementById('value').value) || 0,
+                    shippingMethod: document.querySelector('input[name="shipping"]:checked')?.value || 'standard',
+                };
+
+                try {
+                    const res = await fetch('/.netlify/functions/create-parcel', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData),
+                    });
+
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.error || `Server error ${res.status}`);
+                    }
+
+                    const data = await res.json();
+
+                    showToast(`Shipment created! Tracking: ${data.trackingCode}`);
+
+                    // Optional: add to local cache immediately (optimistic UI)
+                    // const newParcel = { id: Date.now(), trackingCode: data.trackingCode, status: 'pending', ...formData, date: new Date().toISOString().split('T')[0] };
+                    // parcels.unshift(newParcel);
+
+                    // Better: reload full list from server
+                    await loadParcelsFromServer();
+
+                    // Reset form
+                    document.getElementById('parcel-form').reset();
+                    document.getElementById('generated-code-container').classList.add('hidden');
+                    currentTrackingCode = '';
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Error creating shipment: ' + err.message);
+                }
+            }
+
+            async function loadParcelsFromServer() {
+                    try {
+                        const res = await fetch('/.netlify/functions/list-parcels');
+                        if (!res.ok) throw new Error('Failed to load parcels');
+
+                        const serverParcels = await res.json();
+
+                        // Map column names to your expected object shape
+                        parcels = serverParcels.map(row => ({
+                            id: row.id,
+                            trackingCode: row.tracking_code,
+                            senderName: row.sender_name,
+                            senderPhone: row.sender_phone,
+                            senderAddress: row.sender_address,
+                            recipientName: row.recipient_name,
+                            recipientPhone: row.recipient_phone,
+                            recipientAddress: row.recipient_address,
+                            description: row.description,
+                            weight: row.weight_kg,
+                            value: row.value_naira,
+                            shippingMethod: row.shipping_method,
+                            status: row.status,
+                            date: row.created_at.split(' ')[0],   // rough date
+                            // history: []   ← you'll need to store history differently (JSON column or separate table)
+                        }));
+
+                        renderParcels();
+                        renderRecentShipments();
+                        updateStats();
+                        document.getElementById('parcel-count').textContent = parcels.length;
+
+                    } catch (err) {
+                        console.error('Failed to load parcels:', err);
+                        showToast('Could not load shipments from server');
+                    }
+                }
+
+
+        // Render parcels table
+        function renderParcels(filteredParcels = null) {
+            const tbody = document.getElementById('parcels-table-body');
+            tbody.innerHTML = '';
+
+            const toRender = filteredParcels || parcels;
+
+            toRender.forEach(parcel => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-zinc-800 hover:bg-zinc-800/50 transition group';
+                row.innerHTML = `
+                    <td class="py-6 px-8">
+                        <div onclick="showTrackingModal(${parcel.id})" 
+                             class="tracking-code cursor-pointer font-mono text-emerald-400 hover:text-emerald-300">${parcel.trackingCode}</div>
+                    </td>
+                    <td class="py-6 px-8">
+                        <div class="font-medium">${parcel.senderName}</div>
+                        <div class="text-xs text-zinc-500">${parcel.senderPhone}</div>
+                    </td>
+                    <td class="py-6 px-8">
+                        <div class="font-medium">${parcel.recipientName}</div>
+                        <div class="text-xs text-zinc-500">${parcel.recipientPhone}</div>
+                    </td>
+                    <td class="py-6 px-8">
+                        ${getStatusBadge(parcel.status)}
+                    </td>
+                    <td class="py-6 px-8 text-xs text-zinc-400">${parcel.date}</td>
+                    <td class="py-6 px-8 text-right">
+                        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="showTrackingModal(${parcel.id}); event.stopImmediatePropagation()" 
+                                    class="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-emerald-500 hover:text-white rounded-2xl">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                            <button onclick="deleteParcel(${parcel.id}); event.stopImmediatePropagation()" 
+                                    class="w-8 h-8 flex items-center justify-center bg-zinc-800 hover:bg-red-500 hover:text-white rounded-2xl">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('parcel-count').textContent = parcels.length;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'pending') {
+                return `<span class="inline-flex items-center px-4 py-1.5 text-xs font-medium bg-amber-400/10 text-amber-400 rounded-3xl">
+                    <span class="w-2 h-2 bg-amber-400 rounded-full mr-2"></span>
+                    PENDING
+                </span>`;
+            } else if (status === 'transit') {
+                return `<span class="inline-flex items-center px-4 py-1.5 text-xs font-medium bg-blue-400/10 text-blue-400 rounded-3xl">
+                    <span class="w-2 h-2 bg-blue-400 rounded-full mr-2 status-dot"></span>
+                    IN TRANSIT
+                </span>`;
+            } else if (status === 'delivered') {
+                return `<span class="inline-flex items-center px-4 py-1.5 text-xs font-medium bg-emerald-400/10 text-emerald-400 rounded-3xl">
+                    <i class="fa-solid fa-check mr-2"></i>
+                    DELIVERED
+                </span>`;
+            }
+            return '';
+        }
+
+        // Delete parcel
+        function deleteParcel(id) {
+            if (confirm("Delete this shipment?")) {
+                parcels = parcels.filter(p => p.id !== id);
+                saveToLocalStorage();
+                renderParcels();
+                renderRecentShipments();
+                updateStats();
+            }
+        }
+
+        // Show tracking modal
+        function showTrackingModal(id) {
+            const parcel = parcels.find(p => p.id === id);
+            if (!parcel) return;
+
+            document.getElementById('modal-tracking-code').textContent = parcel.trackingCode;
+            document.getElementById('modal-sender').innerHTML = `
+                ${parcel.senderName}<br>
+                <span class="text-xs text-zinc-500">${parcel.senderAddress}</span>
+            `;
+            document.getElementById('modal-recipient').innerHTML = `
+                ${parcel.recipientName}<br>
+                <span class="text-xs text-zinc-500">${parcel.recipientAddress}</span>
+            `;
+
+            // Render timeline
+            const timelineEl = document.getElementById('timeline');
+            timelineEl.innerHTML = '';
+
+            parcel.history.forEach((event, index) => {
+                const isLast = index === parcel.history.length - 1;
+                const div = document.createElement('div');
+                div.className = `flex gap-6 ${isLast ? '' : 'relative'}`;
+                if (!isLast) {
+                    div.innerHTML += `
+                        <div class="absolute left-[19px] top-8 w-[2px] h-12 bg-gradient-to-b from-emerald-500/30 to-transparent"></div>
+                    `;
+                }
+                div.innerHTML += `
+                    <div class="w-10 h-10 flex-shrink-0 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs text-zinc-400">${event.time}</div>
+                        <div class="font-medium">${event.status}</div>
+                        <div class="text-xs text-zinc-500">${event.location}</div>
+                    </div>
+                `;
+                timelineEl.appendChild(div);
+            });
+
+            document.getElementById('tracking-modal').classList.remove('hidden');
+            document.getElementById('tracking-modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('tracking-modal').classList.add('hidden');
+            document.getElementById('tracking-modal').classList.remove('flex');
+        }
+
+        // Render recent shipments (dashboard)
+        function renderRecentShipments() {
+            const container = document.getElementById('recent-shipments');
+            container.innerHTML = '';
+
+            const recent = parcels.slice(0, 3);
+
+            recent.forEach(parcel => {
+                const card = document.createElement('div');
+                card.className = 'parcel-card bg-zinc-900 border border-zinc-800 rounded-3xl p-6 cursor-pointer hover:border-emerald-500';
+                card.onclick = () => showTrackingModal(parcel.id);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="tracking-code text-lg font-bold text-emerald-400">${parcel.trackingCode}</div>
+                            <div class="text-xs mt-1 text-zinc-400">${parcel.date}</div>
+                        </div>
+                        ${getStatusBadge(parcel.status)}
+                    </div>
+                    <div class="mt-8">
+                        <div class="flex items-center gap-3">
+                            <div class="text-emerald-400">
+                                <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs text-zinc-400">TO</div>
+                                <div class="font-medium text-sm">${parcel.recipientName}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-zinc-500 mt-6">${parcel.description} • ${parcel.weight}kg</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Update stats
+        function updateStats() {
+            const total = parcels.length;
+            const transit = parcels.filter(p => p.status === 'transit').length;
+            const pending = parcels.filter(p => p.status === 'pending').length;
+            const delivered = parcels.filter(p => p.status === 'delivered').length;
+
+            document.getElementById('kpi-total').textContent = total;
+            document.getElementById('kpi-transit').textContent = transit;
+            document.getElementById('kpi-delivered').textContent = delivered;
+            document.getElementById('stat-in-transit').textContent = transit;
+            document.getElementById('stat-pending').textContent = pending;
+        }
+
+        // Shipping options
+        function renderShippingOptions() {
+            const container = document.getElementById('shipping-options');
+            container.innerHTML = `
+                <label class="cursor-pointer">
+                    <input type="radio" name="shipping" value="express" checked class="peer sr-only">
+                    <div class="peer-checked:bg-emerald-500 peer-checked:text-white border border-zinc-700 hover:border-emerald-500 rounded-3xl p-5 text-center transition">
+                        <div class="text-xs font-medium">EXPRESS</div>
+                        <div class="text-2xl font-bold mt-1">48h</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="shipping" value="standard" class="peer sr-only">
+                    <div class="peer-checked:bg-emerald-500 peer-checked:text-white border border-zinc-700 hover:border-emerald-500 rounded-3xl p-5 text-center transition">
+                        <div class="text-xs font-medium">STANDARD</div>
+                        <div class="text-2xl font-bold mt-1">3-5d</div>
+                    </div>
+                </label>
+                <label class="cursor-pointer">
+                    <input type="radio" name="shipping" value="economy" class="peer sr-only">
+                    <div class="peer-checked:bg-emerald-500 peer-checked:text-white border border-zinc-700 hover:border-emerald-500 rounded-3xl p-5 text-center transition">
+                        <div class="text-xs font-medium">ECONOMY</div>
+                        <div class="text-2xl font-bold mt-1">7d</div>
+                    </div>
+                </label>
+            `;
+        }
+
+        // View switching
+        function switchView(view) {
+            // Hide all views
+            document.querySelectorAll('#content-area > div').forEach(div => {
+                div.classList.add('hidden');
+            });
+
+            // Show target
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+
+            // Update active nav
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('bg-zinc-800', 'text-white');
+                if (link.id === `nav-${view}`) {
+                    link.classList.add('bg-zinc-800', 'text-white');
+                }
+            });
+
+            if (view === 'parcels') {
+                renderParcels();
+            } else if (view === 'dashboard') {
+                renderRecentShipments();
+            }
+        }
+
+        // Filter parcels
+        function filterParcels() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('status-filter').value;
+
+            let filtered = parcels;
+
+            if (searchTerm) {
+                filtered = filtered.filter(p =>
+                    p.trackingCode.toLowerCase().includes(searchTerm) ||
+                    p.senderName.toLowerCase().includes(searchTerm) ||
+                    p.recipientName.toLowerCase().includes(searchTerm) ||
+                    p.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            if (statusFilter) {
+                filtered = filtered.filter(p => p.status === statusFilter);
+            }
+
+            renderParcels(filtered);
+        }
+
+        // Export CSV (fake)
+        function exportParcels() {
+            const csvContent = "data:text/csv;charset=utf-8," +
+                "Tracking,Sender,Recipient,Status,Date\n" +
+                parcels.map(p => `"${p.trackingCode}","${p.senderName}","${p.recipientName}","${p.status}","${p.date}"`).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "shipments.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("Shipments exported as CSV");
+        }
+
+        // Fake notifications
+        function showNotifications() {
+            showToast("3 new updates: 1 delivered, 2 in transit");
+        }
+
+        // Toast
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-800 border border-emerald-500 text-emerald-400 text-sm px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-3 z-50`;
+            toast.innerHTML = `
+                <i class="fa-solid fa-check-circle"></i>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'all 0.4s';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 20px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // Keyboard shortcuts
+        function setupKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    document.getElementById('search-input').focus();
+                }
+
+                if (e.metaKey && e.key === 'k') {
+                    e.preventDefault();
+                    switchView('add-parcel');
+                }
+            });
+        }
+
+        // Mobile sidebar toggle (fake)
+        function toggleSidebar() {
+            showToast("Mobile sidebar would appear here");
+        }
+
+        // Initialize everything
+        async function initialize() {
+                await loadParcelsFromServer();  
+
+                renderShippingOptions();
+                switchView('dashboard');
+                setupKeyboard();
+
+                console.log('%cLogiTrack Admin ready 🚀', 'color:#10b981; font-weight:bold');
+            }
+
+        // Run on load
+        window.onload = initialize;
+    </script>
+</body>
+
+</html>
