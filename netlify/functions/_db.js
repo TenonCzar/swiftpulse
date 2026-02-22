@@ -3,7 +3,7 @@
 // Netlify bundles each function independently via esbuild,
 // so this module is inlined into each function bundle.
 
-const { createClient } = require("@libsql/client");
+const { createClient } = require("@libsql/client/client-http");
 
 let _client = null;
 
