@@ -6,9 +6,10 @@
 const { v4: uuidv4 } = require("uuid");
 const { initDb, ok, err, CORS_HEADERS } = require("./_db");
 const { geocodeAddress, getRoute } = require("./_routing");
+const nodemailer  = require("nodemailer");
 
 function generateTrackingCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890";
   let seg = () =>
     Array.from(
       { length: 3 },
@@ -147,6 +148,40 @@ exports.handler = async (event) => {
         originLat,
         originLng,
       ],
+    });
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT) || 465,
+      secure: true,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"SwiftPulse Courier" <${process.env.SMTP_USER}>`,
+      to: receiverEmail,
+      subject: `Your parcel is on its way — ${trackingCode}`,
+      html: `
+    <div style="font-family:sans-serif;max-width:560px;margin:0 auto;">
+      <h2 style="color:#F59E0B;">📦 Parcel Incoming, ${receiverName}!</h2>
+      <p>A parcel has been sent to you and is now registered in our system.</p>
+      <table style="width:100%;border-collapse:collapse;margin:20px 0;">
+        <tr><td style="padding:8px;color:#888;width:160px;">Tracking Code</td><td style="padding:8px;font-weight:bold;letter-spacing:0.1em;">${trackingCode}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#888;">Description</td><td style="padding:8px;">${parcelDescription}</td></tr>
+        <tr><td style="padding:8px;color:#888;">From</td><td style="padding:8px;">${senderName}</td></tr>
+        <tr style="background:#f9f9f9;"><td style="padding:8px;color:#888;">Delivery To</td><td style="padding:8px;">${receiverAddress}</td></tr>
+        <tr><td style="padding:8px;color:#888;">Est. Delivery</td><td style="padding:8px;">${estimatedDelivery.toDateString()}</td></tr>
+      </table>
+      <a href="${process.env.SITE_URL}/track/${trackingCode}"
+         style="display:inline-block;background:#F59E0B;color:#000;padding:12px 24px;text-decoration:none;font-weight:bold;border-radius:4px;">
+        Track Your Parcel
+      </a>
+      <p style="color:#aaa;font-size:12px;margin-top:32px;">SwiftPulse Courier · Powered by CRX</p>
+    </div>
+  `,
     });
 
     return ok(

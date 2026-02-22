@@ -4,7 +4,7 @@
   # publish = "."                    # or "dist" / "build" if you have one
   # functions = "netlify/functions"  # ← points to your functions folder
 
-  publish = "public"
+  publish = "."
   functions = "netlify/functions"
 
 [functions]

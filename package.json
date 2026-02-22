@@ -20,6 +20,7 @@
   "homepage": "https://github.com/TenonCzar/swiftpulse#readme",
   "dependencies": {
     "@libsql/client": "^0.17.0",
+    "nodemailer": "^8.0.1",
     "uuid": "^9.0.0"
   }
 }
