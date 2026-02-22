@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRX Courier — Track Parcel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Barlow:wght@400;600&display=swap"
+        rel="stylesheet" />
+    <!-- Leaflet for the map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --amber: #F59E0B;
+            --amber-dim: #92400E;
+            --dark: #0A0A0A;
+            --panel: #111111;
+            --border: #1F1F1F;
+            --muted: #3D3D3D;
+            --text: #E5E5E5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: var(--text);
+            font-family: 'Barlow', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.4;
+        }
+
+        .mono-sm {
+            font-family: 'DM Mono', monospace;
+        }
+
+        .form-input {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            padding: 0.9rem 1.2rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            flex: 1;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 1px var(--amber), 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--muted);
+        }
+
+        .btn-search {
+            background: var(--amber);
+            color: #000;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: 0.1em;
+            padding: 0.9rem 2rem;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+
+        .btn-search:hover {
+            background: #FCD34D;
+        }
+
+        .btn-search:disabled {
+            background: var(--muted);
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        #map {
+            height: 420px;
+            background: #0A0A0A;
+            border: 1px solid var(--border);
+        }
+
+        /* Dark Leaflet tiles */
+        .leaflet-tile {
+            filter: brightness(0.7) saturate(0.4) hue-rotate(180deg) invert(1) contrast(0.9);
+        }
+
+        .leaflet-container {
+            background: #0D0D0D;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0.3rem 0.8rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: 1px solid;
+        }
+
+        .status-pending {
+            border-color: #555;
+            color: #888;
+        }
+
+        .status-in_transit {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+
+        .status-out_for_delivery {
+            border-color: #60A5FA;
+            color: #60A5FA;
+        }
+
+        .status-delivered {
+            border-color: #4ADE80;
+            color: #4ADE80;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-pending .status-dot {
+            background: #888;
+        }
+
+        .status-in_transit .status-dot {
+            background: var(--amber);
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-out_for_delivery .status-dot {
+            background: #60A5FA;
+            animation: pulse 1s infinite;
+        }
+
+        .status-delivered .status-dot {
+            background: #4ADE80;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .info-row {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #555;
+            min-width: 140px;
+            padding-top: 2px;
+        }
+
+        .info-value {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            color: var(--text);
+        }
+
+        .event-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid #161616;
+            position: relative;
+        }
+
+        .event-item::before {
+            content: '';
+            position: absolute;
+            left: 22px;
+            top: 32px;
+            bottom: -8px;
+            width: 1px;
+            background: var(--border);
+        }
+
+        .event-item:last-child::before {
+            display: none;
+        }
+
+        .event-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--muted);
+            flex-shrink: 0;
+            margin-top: 5px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .event-dot.latest {
+            background: var(--amber);
+            box-shadow: 0 0 8px var(--amber);
+        }
+
+        .progress-bar-outer {
+            height: 4px;
+            background: var(--border);
+            width: 100%;
+            position: relative;
+        }
+
+        .progress-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+            transition: width 1s ease;
+            position: relative;
+        }
+
+        .progress-bar-inner::after {
+            content: '';
+            position: absolute;
+            right: -4px;
+            top: -4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--amber);
+            box-shadow: 0 0 12px var(--amber);
+        }
+
+        .nav-link {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            color: #888;
+            text-decoration: none;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--amber);
+        }
+
+        .nav-link.active {
+            color: var(--amber);
+            border-bottom: 1px solid var(--amber);
+        }
+
+        #notFound {
+            display: none;
+        }
+
+        #trackingResult {
+            display: none;
+        }
+
+        #loadingState {
+            display: none;
+        }
+
+        .stripe-bg {
+            background-image: repeating-linear-gradient(-45deg, transparent, transparent 20px, rgba(245, 158, 11, 0.03) 20px, rgba(245, 158, 11, 0.03) 21px);
+        }
+
+        @keyframes slideIn {
+            from {
+                width: 0
+            }
+
+            to {
+                width: 100%
+            }
+        }
+
+        .amber-bar {
+            animation: slideIn 0.8s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="stripe-bg">
+
+    <!-- Header -->
+    <header class="border-b border-[#1F1F1F]">
+        <div class="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div>
+                    <div class="flex items-center gap-3">
+                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                            <rect width="28" height="28" fill="#F59E0B" />
+                            <path d="M6 8h10l6 5v7H6V8z" fill="#000" />
+                            <circle cx="10" cy="21" r="2" fill="#F59E0B" />
+                            <circle cx="18" cy="21" r="2" fill="#F59E0B" />
+                        </svg>
+                        <span
+                            style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; letter-spacing:0.05em; color:#F59E0B;">CRX
+                            COURIER</span>
+                    </div>
+                    <div class="amber-bar h-[2px] bg-amber-500 mt-0.5"></div>
+                </div>
+            </div>
+            <nav class="flex items-center gap-8">
+                <a href="/" class="nav-link">Ship</a>
+                <a href="/track" class="nav-link active">Track</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-12 pb-24">
+
+        <!-- Page title -->
+        <div class="mb-8">
+            <h1 style="font-family:'Bebas Neue',sans-serif; font-size:clamp(2.5rem,6vw,5rem); line-height:0.95;">
+                TRACK YOUR<br />
+                <span style="color:#F59E0B;">SHIPMENT</span>
+            </h1>
+            <p style="color:#888; font-size:0.9rem; margin-top:0.8rem;">Enter your tracking code to see live location
+                updates.</p>
+        </div>
+
+        <!-- Search bar -->
+        <div class="flex gap-0 mb-10 max-w-2xl">
+            <input type="text" id="trackingInput" class="form-input" placeholder="CRX-ABC-DEF-GHI"
+                style="text-transform:uppercase;" maxlength="17" />
+            <button class="btn-search" onclick="searchParcel()">TRACK</button>
+        </div>
+
+        <!-- Loading state -->
+        <div id="loadingState" class="text-center py-16">
+            <div
+                style="display:inline-block; width:40px; height:40px; border:2px solid #1F1F1F; border-top-color:#F59E0B; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:1rem;">
+            </div>
+            <p style="font-family:'DM Mono',monospace; font-size:0.8rem; color:#555; letter-spacing:0.1em;">LOCATING
+                PARCEL...</p>
+        </div>
+
+        <!-- Not found -->
+        <div id="notFound" class="border border-[#DC2626] bg-[#1A0808] p-6 max-w-md">
+            <p style="font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:#EF4444; letter-spacing:0.05em;">
+                TRACKING CODE NOT FOUND</p>
+            <p style="font-family:'DM Mono',monospace; font-size:0.78rem; color:#888; margin-top:0.5rem;">Double-check
+                the code and try again. Codes are in the format CRX-XXX-XXX-XXX.</p>
+        </div>
+
+        <!-- Tracking result -->
+        <div id="trackingResult">
+
+            <!-- Status header -->
+            <div class="border border-[#1F1F1F] p-6 mb-6 relative" style="background:#0D0D0D;">
+                <div class="absolute top-0 left-0 right-0"
+                    style="height:2px; background:linear-gradient(90deg,#F59E0B,transparent);"></div>
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p
+                            style="font-family:'DM Mono',monospace; font-size:0.65rem; color:#555; letter-spacing:0.1em; margin-bottom:0.5rem;">
+                            TRACKING CODE</p>
+                        <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; letter-spacing:0.15em; color:#F59E0B;"
+                            id="displayCode"></div>
+                    </div>
+                    <div id="statusBadge"></div>
+                </div>
+
+                <!-- Progress bar -->
+                <div class="mt-6 mb-2">
+                    <div class="flex justify-between mb-2"
+                        style="font-family:'DM Mono',monospace; font-size:0.65rem; color:#555;">
+                        <span>ORIGIN</span>
+                        <span id="progressPct" style="color:#F59E0B;">0%</span>
+                        <span>DESTINATION</span>
+                    </div>
+                    <div class="progress-bar-outer">
+                        <div class="progress-bar-inner" id="progressBar" style="width:0%"></div>
+                    </div>
+                    <div class="flex justify-between mt-1"
+                        style="font-family:'DM Mono',monospace; font-size:0.65rem; color:#444;">
+                        <span id="originLabel">—</span>
+                        <span id="destLabel">—</span>
+                    </div>
+                </div>
+
+                <!-- Current location -->
+                <div class="mt-4 flex items-center gap-3">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="7" stroke="#F59E0B" stroke-width="1.5" />
+                        <circle cx="8" cy="8" r="3" fill="#F59E0B" />
+                    </svg>
+                    <span style="font-family:'DM Mono',monospace; font-size:0.8rem; color:#F59E0B;"
+                        id="currentLocation">Awaiting data...</span>
+                </div>
+                <p style="font-family:'DM Mono',monospace; font-size:0.65rem; color:#444; margin-top:0.3rem; padding-left:28px;"
+                    id="lastUpdatedTime"></p>
+            </div>
+
+            <!-- Map -->
+            <div class="mb-6 relative">
+                <div id="map"></div>
+                <div
+                    style="position:absolute; top:12px; right:12px; background:rgba(10,10,10,0.85); border:1px solid #1F1F1F; padding:0.4rem 0.8rem; font-family:'DM Mono',monospace; font-size:0.65rem; color:#555; letter-spacing:0.08em; z-index:400;">
+                    LIVE ROUTE · UPDATES HOURLY
+                </div>
+            </div>
+
+            <!-- Info grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+
+                <!-- Parcel info -->
+                <div class="border border-[#1F1F1F] p-5" style="background:#0D0D0D;">
+                    <h3
+                        style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:0.1em; margin-bottom:1rem; color:#888;">
+                        PARCEL DETAILS</h3>
+                    <div id="parcelInfo"></div>
+                </div>
+
+                <!-- Delivery info -->
+                <div class="border border-[#1F1F1F] p-5" style="background:#0D0D0D;">
+                    <h3
+                        style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:0.1em; margin-bottom:1rem; color:#888;">
+                        DELIVERY INFO</h3>
+                    <div id="deliveryInfo"></div>
+                </div>
+
+            </div>
+
+            <!-- Tracking timeline -->
+            <div class="border border-[#1F1F1F] p-5" style="background:#0D0D0D;">
+                <h3
+                    style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:0.1em; margin-bottom:1.2rem; color:#888;">
+                    TRACKING HISTORY</h3>
+                <div id="trackingEvents"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-[#1F1F1F] py-6">
+        <div class="max-w-6xl mx-auto px-6 flex items-center justify-between">
+            <span style="font-family:'DM Mono',monospace; font-size:0.7rem; color:#333;">CRX COURIER SYSTEM v1.0</span>
+            <span style="font-family:'DM Mono',monospace; font-size:0.7rem; color:#333;">MAP: OPENSTREETMAP · ROUTING:
+                OSRM</span>
+        </div>
+    </footer>
+
+    <script>
+        let map = null;
+        let markers = [];
+        let routeLine = null;
+        let currentMarker = null;
+        let refreshInterval = null;
+
+        // Auto-fill from URL path e.g. /track/CRX-XXX-XXX-XXX
+        const pathParts = window.location.pathname.split('/');
+        const urlCode = pathParts[pathParts.length - 1];
+        if (urlCode && urlCode.startsWith('CRX-')) {
+            document.getElementById('trackingInput').value = urlCode;
+            window.addEventListener('DOMContentLoaded', () => searchParcel());
+        }
+
+        // Allow Enter key
+        document.getElementById('trackingInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchParcel();
+        });
+
+        function initMap(lat, lng) {
+            if (map) {
+                map.remove();
+                map = null;
+            }
+
+            map = L.map('map', { zoomControl: true, attributionControl: true });
+
+            // Dark tile layer (CartoDB Dark Matter - free, no key needed)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · © <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            map.setView([lat, lng], 6);
+        }
+
+        function clearMapLayers() {
+            if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+            if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+        }
+
+        function renderMap(data) {
+            const { parcel, routePoints } = data;
+
+            const hasCoords = parcel.currentLat && parcel.currentLng;
+            const mapLat = hasCoords ? parcel.currentLat : (parcel.originLat || 51.5);
+            const mapLng = hasCoords ? parcel.currentLng : (parcel.originLng || -0.1);
+
+            if (!map) initMap(mapLat, mapLng);
+            clearMapLayers();
+
+            const amberIcon = (label) => L.divIcon({
+                html: `<div style="background:#F59E0B;color:#000;font-family:'DM Mono',monospace;font-size:10px;font-weight:500;padding:3px 6px;white-space:nowrap;letter-spacing:0.05em;clip-path:polygon(0 0,calc(100% - 6px) 0,100% 6px,100% 100%,6px 100%,0 calc(100% - 6px));">${label}</div>`,
+                iconAnchor: [0, 0],
+                className: ''
+            });
+
+            const pulseDot = L.divIcon({
+                html: `<div style="width:18px;height:18px;border-radius:50%;background:#F59E0B;box-shadow:0 0 0 0 rgba(245,158,11,0.7);animation:mapPulse 2s infinite;position:relative;">
+               <style>@keyframes mapPulse{0%{box-shadow:0 0 0 0 rgba(245,158,11,0.7)}70%{box-shadow:0 0 0 14px rgba(245,158,11,0)}100%{box-shadow:0 0 0 0 rgba(245,158,11,0)}}</style>
+             </div>`,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+                className: ''
+            });
+
+            const greenDot = L.divIcon({
+                html: `<div style="width:14px;height:14px;border-radius:50%;background:#4ADE80;box-shadow:0 0 8px #4ADE80;"></div>`,
+                iconSize: [14, 14],
+                iconAnchor: [7, 7],
+                className: ''
+            });
+
+            // Draw route
+            if (routePoints && routePoints.length > 1) {
+                const latLngs = routePoints.map(p => [p.lat, p.lng]);
+                routeLine = L.polyline(latLngs, {
+                    color: '#F59E0B',
+                    weight: 3,
+                    opacity: 0.6,
+                    dashArray: '6, 4'
+                }).addTo(map);
+            }
+
+            // Origin marker
+            if (parcel.originLat) {
+                const m = L.marker([parcel.originLat, parcel.originLng], { icon: amberIcon('ORIGIN') }).addTo(map);
+                markers.push(m);
+            }
+
+            // Destination marker
+            if (parcel.destinationLat) {
+                const m = L.marker([parcel.destinationLat, parcel.destinationLng], { icon: greenDot }).addTo(map);
+                m.bindTooltip('DESTINATION', {
+                    permanent: false, direction: 'top',
+                    className: 'bg-black text-amber-400 font-mono text-xs px-2 py-1 border border-amber-500'
+                });
+                markers.push(m);
+            }
+
+            // Current location marker
+            if (parcel.currentLat) {
+                currentMarker = L.marker([parcel.currentLat, parcel.currentLng], { icon: pulseDot })
+                    .bindPopup(`<div style="font-family:'DM Mono',monospace;font-size:11px;background:#0A0A0A;color:#F59E0B;border:none;padding:8px;">${parcel.currentLocationName}</div>`)
+                    .addTo(map);
+
+                map.setView([parcel.currentLat, parcel.currentLng], 8);
+            }
+
+            // Fit bounds
+            if (parcel.originLat && parcel.destinationLat) {
+                const bounds = L.latLngBounds([
+                    [parcel.originLat, parcel.originLng],
+                    [parcel.destinationLat, parcel.destinationLng]
+                ]);
+                if (parcel.currentLat) bounds.extend([parcel.currentLat, parcel.currentLng]);
+                map.fitBounds(bounds, { padding: [40, 40] });
+            }
+        }
+
+        function formatStatus(status) {
+            const map = {
+                pending: 'Awaiting Pickup',
+                in_transit: 'In Transit',
+                out_for_delivery: 'Out for Delivery',
+                delivered: 'Delivered'
+            };
+            return map[status] || status;
+        }
+
+        function renderInfo(data) {
+            const { parcel, events } = data;
+
+            document.getElementById('displayCode').textContent = parcel.trackingCode;
+
+            // Status badge
+            const statusEl = document.getElementById('statusBadge');
+            statusEl.innerHTML = `
+      <div class="status-badge status-${parcel.status}">
+        <div class="status-dot"></div>
+        ${formatStatus(parcel.status).toUpperCase()}
+      </div>
+    `;
+
+            // Progress
+            const pct = parcel.progressPercent || 0;
+            document.getElementById('progressBar').style.width = `${pct}%`;
+            document.getElementById('progressPct').textContent = `${pct}%`;
+            document.getElementById('originLabel').textContent = truncate(parcel.senderAddress, 28);
+            document.getElementById('destLabel').textContent = truncate(parcel.receiverAddress, 28);
+
+            // Current location
+            document.getElementById('currentLocation').textContent = parcel.currentLocationName || 'Awaiting Pickup';
+            const updated = new Date(parcel.lastUpdated);
+            document.getElementById('lastUpdatedTime').textContent = `LAST UPDATED: ${updated.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+
+            // Parcel info
+            document.getElementById('parcelInfo').innerHTML = infoRow('Description', parcel.parcelDescription)
+                + infoRow('From', parcel.senderAddress)
+                + infoRow('To', parcel.receiverAddress)
+                + infoRow('Receiver', parcel.receiverName);
+
+            // Delivery info
+            const est = new Date(parcel.estimatedDelivery);
+            const created = new Date(parcel.createdAt);
+            document.getElementById('deliveryInfo').innerHTML =
+                infoRow('Status', formatStatus(parcel.status))
+                + infoRow('Created', created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
+                + infoRow('Est. Delivery', est.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))
+                + infoRow('Transit Days', `${parcel.daysToDeliver} days`);
+
+            // Events
+            const eventsHtml = events.length
+                ? events.map((ev, i) => {
+                    const ts = new Date(ev.timestamp);
+                    const timeStr = ts.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    return `
+            <div class="event-item">
+              <div class="event-dot ${i === 0 ? 'latest' : ''}"></div>
+              <div style="flex:1;">
+                <div style="font-family:'DM Mono',monospace; font-size:0.78rem; color:${i === 0 ? '#F59E0B' : '#E5E5E5'};">${ev.description}</div>
+                <div style="font-family:'DM Mono',monospace; font-size:0.65rem; color:#444; margin-top:2px;">${timeStr} · ${ev.location_name || ''}</div>
+              </div>
+            </div>
+          `;
+                }).join('')
+                : `<p style="font-family:'DM Mono',monospace; font-size:0.75rem; color:#444;">No events yet. Check back soon.</p>`;
+
+            document.getElementById('trackingEvents').innerHTML = eventsHtml;
+        }
+
+        function infoRow(label, value) {
+            return `
+      <div class="info-row">
+        <span class="info-label">${label}</span>
+        <span class="info-value">${value || '—'}</span>
+      </div>
+    `;
+        }
+
+        function truncate(str, n) {
+            if (!str) return '—';
+            return str.length > n ? str.slice(0, n - 1) + '…' : str;
+        }
+
+        async function searchParcel() {
+            const code = document.getElementById('trackingInput').value.trim().toUpperCase();
+            if (!code) return;
+
+            // Hide all panels
+            document.getElementById('notFound').style.display = 'none';
+            document.getElementById('trackingResult').style.display = 'none';
+            document.getElementById('loadingState').style.display = 'block';
+
+            // Clear refresh interval
+            if (refreshInterval) clearInterval(refreshInterval);
+
+            try {
+                const res = await fetch(`/api/track/${code}`);
+                const data = await res.json();
+
+                document.getElementById('loadingState').style.display = 'none';
+
+                if (!res.ok) {
+                    document.getElementById('notFound').style.display = 'block';
+                    return;
+                }
+
+                document.getElementById('trackingResult').style.display = 'block';
+                renderInfo(data);
+                renderMap(data);
+
+                // Auto-refresh every 5 minutes
+                refreshInterval = setInterval(async () => {
+                    try {
+                        const r2 = await fetch(`/api/track/${code}`);
+                        if (r2.ok) {
+                            const d2 = await r2.json();
+                            renderInfo(d2);
+                            renderMap(d2);
+                        }
+                    } catch { }
+                }, 5 * 60 * 1000);
+
+            } catch (err) {
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('notFound').style.display = 'block';
+            }
+        }
+    </script>
+</body>
+
+</html>

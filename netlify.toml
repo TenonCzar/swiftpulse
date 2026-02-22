@@ -1,5 +1,37 @@
 [build]
   # If you have a build step (e.g. for Vite/React), put it here
   # command = "npm run build"     # optional
-  publish = "."                    # or "dist" / "build" if you have one
-  functions = "netlify/functions"  # ← points to your functions folder
+  # publish = "."                    # or "dist" / "build" if you have one
+  # functions = "netlify/functions"  # ← points to your functions folder
+
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Rewrite API calls to Netlify Functions
+[[redirects]]
+  from = "/api/parcels"
+  to = "/.netlify/functions/create-parcel"
+  status = 200
+
+[[redirects]]
+  from = "/api/track/:code"
+  to = "/.netlify/functions/track-parcel/:code"
+  status = 200
+
+# SPA-style routing for /track/:code -> track.html
+[[redirects]]
+  from = "/track/:code"
+  to = "/track.html"
+  status = 200
+
+[[redirects]]
+  from = "/track"
+  to = "/track.html"
+  status = 200
+
+# Scheduled function to update parcel locations every hour
+[functions."update-locations"]
+  schedule = "0 * * * *"

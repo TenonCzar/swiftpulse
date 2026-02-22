@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/TenonCzar/swiftpulse#readme",
   "dependencies": {
-    "@libsql/client": "^0.17.0"
+    "@libsql/client": "^0.17.0",
+    "uuid": "^9.0.0"
   }
 }
