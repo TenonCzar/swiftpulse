@@ -1,0 +1,18 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "_db.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "nodemailer": "^8.0.1",
+    "uuid": "^13.0.0"
+  }
+}
