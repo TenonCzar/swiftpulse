@@ -7,9 +7,6 @@
   publish = "."
   functions = "netlify/functions"
 
-[functions]
-  node_bundler = "esbuild"
-
 # Rewrite API calls to Netlify Functions
 [[redirects]]
   from = "/api/parcels"

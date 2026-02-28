@@ -1,18 +1,19 @@
 // netlify/functions/update-locations.js
-// Scheduled function — runs every hour (cron: "0 * * * *" set in netlify.toml).
-// Advances each active parcel along its pre-computed route,
-// reverse-geocodes the new position, and logs a tracking event.
+// Scheduled — runs every hour via cron: "0 * * * *" in netlify.toml
 //
-// Netlify Scheduled Functions docs:
-// https://docs.netlify.com/functions/scheduled-functions/
+// Movement logic:
+//   - Route is stored as N sampled points (default 100)
+//   - Total journey = days_to_deliver * 24 hours
+//   - Each hour we advance (N / totalHours) points along the route
+//   - Progress is always relative to time elapsed since creation,
+//     so parcels that were created days ago catch up correctly
+//   - Status: pending → in_transit → out_for_delivery (last 5%) → delivered
 
 const { v4: uuidv4 } = require("uuid");
 const { initDb } = require("./_db");
 const { reverseGeocode } = require("./_routing");
 
 exports.handler = async (event) => {
-  // Netlify sends scheduled invocations as POST with a specific header.
-  // During local dev you can POST to /.netlify/functions/update-locations manually.
   console.log(`[update-locations] Triggered at ${new Date().toISOString()}`);
 
   try {
@@ -22,21 +23,25 @@ exports.handler = async (event) => {
       SELECT * FROM parcels
       WHERE status IN ('pending', 'in_transit', 'out_for_delivery')
         AND route_points IS NOT NULL
+        AND origin_lat IS NOT NULL
     `);
 
     if (!result.rows.length) {
-      console.log("[update-locations] No active parcels.");
+      console.log("[update-locations] No active parcels to update.");
       return { statusCode: 200, body: JSON.stringify({ updated: 0 }) };
     }
 
+    console.log(
+      `[update-locations] Processing ${result.rows.length} parcel(s)...`,
+    );
     let updated = 0;
 
     for (const parcel of result.rows) {
       try {
         await advanceParcel(parcel, db);
         updated++;
-        // Respect Nominatim's 1-req/sec rate limit
-        await sleep(1100);
+        // Mapbox reverse geocoding has no strict rate limit but be polite
+        await sleep(300);
       } catch (e) {
         console.error(
           `[update-locations] Failed for ${parcel.tracking_code}:`,
@@ -59,18 +64,31 @@ async function advanceParcel(parcel, db) {
   const routePoints = JSON.parse(parcel.route_points);
   const totalPoints = routePoints.length;
   const totalHours = parcel.days_to_deliver * 24;
-  const pointsPerHr = Math.max(1, Math.floor(totalPoints / totalHours));
 
-  let newProgress = (parcel.route_progress || 0) + pointsPerHr;
+  // Calculate how many hours have elapsed since the parcel was created
+  const createdAt = new Date(parcel.created_at);
+  const now = new Date();
+  const hoursElapsed = Math.max(0, (now - createdAt) / (1000 * 60 * 60));
+
+  // Target index = what point we SHOULD be at right now based on time elapsed
+  // This self-corrects: if a parcel was created 10hrs ago on a 72hr journey,
+  // it will jump to the correct position regardless of prior update history
+  const targetProgress = Math.min(
+    totalPoints - 1,
+    Math.floor((hoursElapsed / totalHours) * (totalPoints - 1)),
+  );
+
+  // Only advance, never go backwards
+  const newProgress = Math.max(parcel.route_progress || 0, targetProgress);
+
+  // Determine status
   let newStatus = parcel.status;
-
   if (newProgress >= totalPoints - 1) {
-    newProgress = totalPoints - 1;
     newStatus = "delivered";
-  } else {
-    if (parcel.status === "pending") newStatus = "in_transit";
-    // Last 5% of route → out for delivery
-    if (newProgress >= totalPoints * 0.95) newStatus = "out_for_delivery";
+  } else if (newProgress >= totalPoints * 0.95) {
+    newStatus = "out_for_delivery";
+  } else if (parcel.status === "pending") {
+    newStatus = "in_transit";
   }
 
   const point = routePoints[newProgress];
@@ -91,12 +109,8 @@ async function advanceParcel(parcel, db) {
     ],
   });
 
+  // Log tracking event
   const isDelivered = newStatus === "delivered";
-  const eventType = isDelivered ? "delivered" : "location_update";
-  const description = isDelivered
-    ? `Package delivered to ${parcel.receiver_name}`
-    : `Package in transit through ${locationName}`;
-
   await db.execute({
     sql: `INSERT INTO tracking_events
             (id, tracking_code, event_type, description, location_name, lat, lng)
@@ -104,16 +118,20 @@ async function advanceParcel(parcel, db) {
     args: [
       uuidv4(),
       parcel.tracking_code,
-      eventType,
-      description,
+      isDelivered ? "delivered" : "location_update",
+      isDelivered
+        ? `Package delivered to ${parcel.receiver_name}`
+        : `Package in transit through ${locationName}`,
       locationName,
       point.lat,
       point.lng,
     ],
   });
 
+  const pct = Math.round((newProgress / (totalPoints - 1)) * 100);
   console.log(
-    `  ↪ ${parcel.tracking_code}: ${newProgress}/${totalPoints - 1} (${newStatus}) @ ${locationName}`,
+    `  ↪ ${parcel.tracking_code}: ${newProgress}/${totalPoints - 1} (${pct}%) ` +
+      `[${newStatus}] @ ${locationName} | elapsed: ${hoursElapsed.toFixed(1)}h / ${totalHours}h`,
   );
 }
 
