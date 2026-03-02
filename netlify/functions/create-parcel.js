@@ -7,6 +7,8 @@ const { v4: uuidv4 } = require("uuid");
 const { initDb, ok, err, CORS_HEADERS } = require("./_db");
 const { geocodeAddress, getRoute } = require("./_routing");
 const nodemailer  = require("nodemailer");
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 function generateTrackingCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890";
@@ -160,7 +162,8 @@ exports.handler = async (event) => {
       },
     });
 
-    await transporter.sendMail({
+    try {
+    await resend.emails.send({
       from: `"SwiftPulse Courier" <${process.env.SMTP_USER}>`,
       to: receiverEmail,
       subject: `Your parcel is on its way — ${trackingCode}`,
@@ -183,6 +186,9 @@ exports.handler = async (event) => {
     </div>
   `,
     });
+    } catch (emailErr) {
+  console.error('[email] Failed (non-fatal):', emailErr.message);
+}
 
     return ok(
       {
